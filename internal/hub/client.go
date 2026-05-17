@@ -9,11 +9,12 @@ import (
 )
 
 type Client struct {
-	userID int64
-	conn   *websocket.Conn
-	hub    *Hub
-	send   chan []byte
-	once   sync.Once
+	userID     int64
+	conn       *websocket.Conn
+	hub        *Hub
+	send       chan []byte
+	once       sync.Once
+	roomAction *RoomAction
 }
 
 func NewClient(userID int64, conn *websocket.Conn, hub *Hub) *Client {
@@ -31,6 +32,20 @@ func (c *Client) Register() {
 
 func (c *Client) Unregister() {
 	c.hub.unregister <- c
+}
+
+func (c *Client) JoinRoom(roomID int64) {
+	c.hub.joinRoom <- &RoomAction{
+		roomID: roomID,
+		client: c,
+	}
+}
+
+func (c *Client) LeaveRoom(roomID int64) {
+	c.hub.leaveRoom <- &RoomAction{
+		roomID: roomID,
+		client: c,
+	}
 }
 
 func (c *Client) ReadPump() {
