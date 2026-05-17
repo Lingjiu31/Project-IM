@@ -2,8 +2,8 @@ package ws
 
 import (
 	"Project-IM/internal/hub"
+	"Project-IM/internal/middleware"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -31,15 +31,19 @@ func (h *Handler) ServeWS(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	// 取 user_id
-	userIDStr := c.Query("user_id")
-	userID, err := strconv.ParseInt(userIDStr, 10, 64)
-	if err != nil {
+
+	tokenStr := c.Query("token")
+	if tokenStr == "" {
+		// token 不存在
 		return
 	}
-
+	claims, err := middleware.ParseToken(tokenStr)
+	if err != nil || claims == nil {
+		conn.Close()
+		return
+	}
 	// 实例化 client
-	client := hub.NewClient(userID, conn, h.hub)
+	client := hub.NewClient(claims.UserID, conn, h.hub)
 
 	// 启动 goroutine
 	client.Register()
