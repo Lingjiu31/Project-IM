@@ -1,0 +1,6 @@
+.env
+*.log
+vendor/
+bin/
+im-server
+.idea/
