@@ -2,17 +2,21 @@ package hub
 
 import (
 	"Project-IM/internal/domain"
+	"Project-IM/internal/repository"
 	"encoding/json"
+	"log"
+	"time"
 )
 
 type Hub struct {
-	clients    map[int64]*Client        // 在线用户表
-	rooms      map[int64]map[int64]bool // 群成员表(群ID,用户ID,是否在群)
-	register   chan *Client             // 注册
-	unregister chan *Client             // 注销
-	joinRoom   chan *RoomAction         // 加入群
-	leaveRoom  chan *RoomAction         // 离开群
-	broadcast  chan *domain.WSMessage   // 转发消息
+	clients    map[int64]*Client            // 在线用户表
+	rooms      map[int64]map[int64]bool     // 群成员表(群ID,用户ID,是否在群)
+	register   chan *Client                 // 注册
+	unregister chan *Client                 // 注销
+	joinRoom   chan *RoomAction             // 加入群
+	leaveRoom  chan *RoomAction             // 离开群
+	broadcast  chan *domain.WSMessage       // 转发消息
+	msgRepo    repository.MessageRepository // 消息存储
 }
 
 type RoomAction struct {
@@ -20,7 +24,7 @@ type RoomAction struct {
 	client *Client
 }
 
-func NewHub() *Hub {
+func NewHub(msgRepo repository.MessageRepository) *Hub {
 	return &Hub{
 		clients:    make(map[int64]*Client),
 		rooms:      make(map[int64]map[int64]bool),
@@ -29,6 +33,7 @@ func NewHub() *Hub {
 		joinRoom:   make(chan *RoomAction),
 		leaveRoom:  make(chan *RoomAction),
 		broadcast:  make(chan *domain.WSMessage),
+		msgRepo:    msgRepo,
 	}
 }
 
@@ -40,15 +45,27 @@ func (h *Hub) Run() {
 		case client := <-h.unregister:
 			delete(h.clients, client.userID)
 		case action := <-h.joinRoom:
-			if _, ok := h.rooms[action.roomID][action.client.userID]; !ok {
-				h.rooms[action.roomID][action.client.userID] = true
-			} else {
+			if h.rooms[action.roomID] == nil {
+				// 群不存在
 				h.rooms[action.roomID] = make(map[int64]bool)
-				h.rooms[action.roomID][action.client.userID] = true
 			}
+			// 不管成员是否存在直接赋值就行
+			h.rooms[action.roomID][action.client.userID] = true
 		case action := <-h.leaveRoom:
 			delete(h.rooms[action.roomID], action.client.userID)
 		case msg := <-h.broadcast:
+			// 先存到数据库
+			record := &domain.Message{
+				SenderID:   msg.SenderID,
+				TargetID:   msg.TargetID,
+				TargetType: msg.TargetType,
+				Content:    msg.Content,
+				CreatedAt:  time.Now(),
+			}
+			if err := h.msgRepo.Save(record); err != nil {
+				log.Printf("消息存库失败: %v", err)
+			}
+			// 转发消息
 			if msg.TargetType == domain.TargetTypeUser {
 				// 单聊
 				if target, ok := h.clients[msg.TargetID]; ok {
