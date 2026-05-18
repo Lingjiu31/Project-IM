@@ -1,7 +1,9 @@
 package main
 
 import (
+	"Project-IM/config"
 	"Project-IM/internal/hub"
+	"Project-IM/internal/repository"
 	"Project-IM/internal/ws"
 	"context"
 	"log"
@@ -11,17 +13,31 @@ import (
 	"time"
 
 	"Project-IM/internal/router"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 func main() {
-	h := hub.NewHub()
+	cfg := config.Load()
+	db, err := gorm.Open(mysql.Open(cfg.DSN), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("连接数据库失败: %v", err)
+	}
+
+	msgRepo := repository.NewMySQLMessageRepo(db)
+	if err := msgRepo.InitTable(); err != nil {
+		log.Fatalf("建表失败: %v", err)
+	}
+
+	h := hub.NewHub(msgRepo)
 	go h.Run()
 
 	w := ws.NewHandler(h)
 	r := router.NewRouter(w)
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    cfg.Addr,
 		Handler: r,
 	}
 
