@@ -12,13 +12,13 @@ type User struct {
 
 // Message 消息领域模型
 type Message struct {
-	ID         int64      `json:"id"`
+	ID         int64      `json:"id"`          // 消息 ID
 	SenderID   int64      `json:"sender_id"`   // 发送者 ID
 	TargetID   int64      `json:"target_id"`   // 单聊：接收方UserID；群聊：RoomID
-	TargetType TargetType `json:"target_type"` // 消息目标类型
+	TargetType TargetType `json:"target_type"` // 消息目标类型(群聊,单聊)
 	Content    string     `json:"content"`
 	CreatedAt  time.Time  `json:"created_at"`
-	Status     MsgStatus  `json:"status"`
+	Status     MsgStatus  `json:"status"` // 是否已读
 }
 
 type TargetType int8
