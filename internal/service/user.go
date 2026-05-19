@@ -2,24 +2,23 @@ package service
 
 import (
 	"Project-IM/internal/domain"
-	"Project-IM/internal/middleware"
 	"Project-IM/internal/repository"
+	jwtpkg "Project-IM/pkg/jwt"
 	"context"
 	"errors"
-	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type UserService struct {
-	repo repository.UserRepository
+	repo   repository.UserRepository
+	jwtMgr *jwtpkg.Manager
 }
 
-func NewUserService(repo repository.UserRepository) *UserService {
-	return &UserService{repo: repo}
+func NewUserService(repo repository.UserRepository, jwtMgr *jwtpkg.Manager) *UserService {
+	return &UserService{repo: repo, jwtMgr: jwtMgr}
 }
 
 func (s *UserService) Register(ctx context.Context, username, password string) error {
@@ -51,14 +50,7 @@ func (s *UserService) Login(ctx context.Context, username, password string) (str
 		return "", errors.New("用户名或密码错误")
 	}
 	// 生成 jwt token
-	claims := &middleware.UserClaims{
-		UserID: user.ID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString(middleware.JWTKey)
+	tokenStr, err := s.jwtMgr.Generate(user.ID)
 	if err != nil {
 		return "", err
 	}
