@@ -15,8 +15,18 @@ type MessagePO struct {
 	CreatedAt  time.Time `gorm:"column:created_at;autoCreateTime"`
 }
 
+type UserPO struct {
+	ID       int64  `gorm:"primaryKey;autoIncrement"`
+	Username string `gorm:"column:username;not null;uniqueIndex"`
+	Password string `gorm:"column:password;not null"`
+	Avatar   string `gorm:"column:avatar"`
+}
+
 func (MessagePO) TableName() string {
 	return "messages"
+}
+func (UserPO) TableName() string {
+	return "users"
 }
 
 func toMessagePO(msg *domain.Message) *MessagePO {
@@ -40,5 +50,23 @@ func toDomainMessage(po *MessagePO) *domain.Message {
 		Content:    po.Content,
 		Status:     domain.MsgStatus(po.Status),
 		CreatedAt:  po.CreatedAt,
+	}
+}
+
+func toDomainUser(po *UserPO) *domain.User {
+	return &domain.User{
+		ID:       po.ID,
+		Username: po.Username,
+		Password: po.Password,
+		Avatar:   po.Avatar,
+	}
+}
+
+func toUserPO(user *domain.User) *UserPO {
+	return &UserPO{
+		ID:       user.ID,
+		Username: user.Username,
+		Password: user.Password,
+		Avatar:   user.Avatar,
 	}
 }

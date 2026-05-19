@@ -6,8 +6,8 @@ import "time"
 type User struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username"`
-	Password string `json:"-"` // 不序列化到JSON
-	Avatar   string `json:"avatar"`
+	Password string `json:"-"`      // 不序列化到JSON
+	Avatar   string `json:"avatar"` // 头像
 }
 
 // Message 消息领域模型
