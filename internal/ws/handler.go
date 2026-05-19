@@ -2,7 +2,7 @@ package ws
 
 import (
 	"Project-IM/internal/hub"
-	"Project-IM/internal/middleware"
+	jwtpkg "Project-IM/pkg/jwt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +12,13 @@ import (
 type Handler struct {
 	hub      *hub.Hub
 	upgrader websocket.Upgrader
+	jwtMgr   *jwtpkg.Manager
 }
 
-func NewHandler(hub *hub.Hub) *Handler {
+func NewHandler(hub *hub.Hub, jwtMrg *jwtpkg.Manager) *Handler {
 	return &Handler{
-		hub: hub,
+		hub:    hub,
+		jwtMgr: jwtMrg,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // 开发阶段,允许所有来源
@@ -37,7 +39,7 @@ func (h *Handler) ServeWS(c *gin.Context) {
 		// token 不存在
 		return
 	}
-	claims, err := middleware.ParseToken(tokenStr)
+	claims, err := h.jwtMgr.Parse(tokenStr)
 	if err != nil || claims == nil {
 		conn.Close()
 		return
