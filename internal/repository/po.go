@@ -17,9 +17,9 @@ type MessagePO struct {
 
 type UserPO struct {
 	ID       int64  `gorm:"primaryKey;autoIncrement"`
-	Username string `gorm:"column:username;not null;uniqueIndex"`
-	Password string `gorm:"column:password;not null"`
-	Avatar   string `gorm:"column:avatar"`
+	Username string `gorm:"column:username;type:varchar(64);not null;uniqueIndex"`
+	Password string `gorm:"column:password;type:varchar(256);not null"`
+	Avatar   string `gorm:"column:avatar;type:varchar(256);"`
 }
 
 func (MessagePO) TableName() string {

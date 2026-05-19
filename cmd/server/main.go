@@ -2,8 +2,10 @@ package main
 
 import (
 	"Project-IM/config"
+	"Project-IM/internal/handler"
 	"Project-IM/internal/hub"
 	"Project-IM/internal/repository"
+	"Project-IM/internal/service"
 	"Project-IM/internal/ws"
 	"context"
 	"log"
@@ -26,15 +28,21 @@ func main() {
 	}
 
 	msgRepo := repository.NewMySQLMessageRepo(db)
-	if err := msgRepo.InitTable(); err != nil {
+	if err = msgRepo.InitTable(); err != nil {
+		log.Fatalf("建表失败: %v", err)
+	}
+	userRepo := repository.NewMySQLUserRepo(db)
+	if err = userRepo.InitTable(); err != nil {
 		log.Fatalf("建表失败: %v", err)
 	}
 
-	h := hub.NewHub(msgRepo)
-	go h.Run()
+	imHub := hub.NewHub(msgRepo)
+	go imHub.Run()
 
-	w := ws.NewHandler(h)
-	r := router.NewRouter(w)
+	wsHandler := ws.NewHandler(imHub)
+	userSvc := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userSvc)
+	r := router.NewRouter(wsHandler, userHandler)
 
 	srv := &http.Server{
 		Addr:    cfg.Addr,
