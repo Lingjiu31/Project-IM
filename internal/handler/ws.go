@@ -15,10 +15,17 @@ type Handler struct {
 	jwtMgr   *jwtpkg.Manager
 }
 
+<<<<<<< HEAD:internal/handler/ws.go
 func NewHandler(hub *hub.Hub, jwtMgr *jwtpkg.Manager) *Handler {
 	return &Handler{
 		hub:    hub,
 		jwtMgr: jwtMgr,
+=======
+func NewHandler(hub *hub.Hub, jwtMrg *jwtpkg.Manager) *Handler {
+	return &Handler{
+		hub:    hub,
+		jwtMgr: jwtMrg,
+>>>>>>> origin/main:internal/ws/handler.go
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // 开发阶段,允许所有来源
