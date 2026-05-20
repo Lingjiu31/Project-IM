@@ -2,7 +2,6 @@ package handler
 
 import (
 	"Project-IM/internal/hub"
-	jwtpkg "Project-IM/pkg/jwt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,20 +11,11 @@ import (
 type Handler struct {
 	hub      *hub.Hub
 	upgrader websocket.Upgrader
-	jwtMgr   *jwtpkg.Manager
 }
 
-<<<<<<< HEAD:internal/handler/ws.go
-func NewHandler(hub *hub.Hub, jwtMgr *jwtpkg.Manager) *Handler {
+func NewHandler(hub *hub.Hub) *Handler {
 	return &Handler{
-		hub:    hub,
-		jwtMgr: jwtMgr,
-=======
-func NewHandler(hub *hub.Hub, jwtMrg *jwtpkg.Manager) *Handler {
-	return &Handler{
-		hub:    hub,
-		jwtMgr: jwtMrg,
->>>>>>> origin/main:internal/ws/handler.go
+		hub: hub,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // 开发阶段,允许所有来源
@@ -42,22 +32,17 @@ func (h *Handler) ServeWS(c *gin.Context) {
 		return
 	}
 
-	tokenStr := c.Query("token")
-	if tokenStr == "" {
-		// token 不存在
-		conn.Close()
-		return
-	}
-	claims, err := h.jwtMgr.Parse(tokenStr)
-	if err != nil || claims == nil {
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
 		conn.Close()
 		return
 	}
 	// 实例化 client
-	client := hub.NewClient(claims.UserID, conn, h.hub)
+	client := hub.NewClient(userID, conn, h.hub)
 
 	// 启动 goroutine
 	client.Register()
+	go h.hub.SendOfflineMessage(client)
 	go client.ReadPump()
 	go client.WritePump()
 }

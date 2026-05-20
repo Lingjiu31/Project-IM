@@ -45,5 +45,6 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	ctx.JSON(http.StatusOK, gin.H{"token": tokenStr, "message": "登录成功"})
 }
