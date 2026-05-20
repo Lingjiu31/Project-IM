@@ -6,7 +6,6 @@ import (
 	"Project-IM/internal/hub"
 	"Project-IM/internal/repository"
 	"Project-IM/internal/service"
-	"Project-IM/internal/ws"
 	jwtpkg "Project-IM/pkg/jwt"
 	"context"
 	"log"
@@ -41,7 +40,7 @@ func main() {
 	go imHub.Run()
 
 	jwtMgr := jwtpkg.NewManager(cfg.JWTSecret)
-	wsHandler := ws.NewHandler(imHub, jwtMgr)
+	wsHandler := handler.NewHandler(imHub, jwtMgr)
 	userSvc := service.NewUserService(userRepo, jwtMgr)
 	userHandler := handler.NewUserHandler(userSvc)
 	r := router.NewRouter(wsHandler, userHandler)

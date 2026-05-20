@@ -1,11 +1,15 @@
 package repository
 
-import "Project-IM/internal/domain"
+import (
+	"Project-IM/internal/domain"
+	"context"
+)
 
 type MessageRepository interface {
-	Save(msg *domain.Message) error
-	FindByUser(senderID, targetID int64, limit, offset int) ([]*domain.Message, error)
-	FindUnread(userID int64) ([]*domain.Message, error)
+	Save(ctx context.Context, msg *domain.Message) error
+	FindByUser(ctx context.Context, senderID, targetID int64, limit, offset int) ([]*domain.Message, error)
+	FindUnread(ctx context.Context, userID int64) ([]*domain.Message, error)
+	MarkRead(ctx context.Context, msgIDs []int64) error
 }
 
 // limit 表示每次取多少条, offset 表示从第几条开始

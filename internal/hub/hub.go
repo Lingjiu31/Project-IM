@@ -3,6 +3,7 @@ package hub
 import (
 	"Project-IM/internal/domain"
 	"Project-IM/internal/repository"
+	"context"
 	"encoding/json"
 	"log"
 	"time"
@@ -62,7 +63,7 @@ func (h *Hub) Run() {
 				Content:    msg.Content,
 				CreatedAt:  time.Now(),
 			}
-			if err := h.msgRepo.Save(record); err != nil {
+			if err := h.msgRepo.Save(context.Background(), record); err != nil {
 				log.Printf("消息存库失败: %v", err)
 			}
 			// 转发消息

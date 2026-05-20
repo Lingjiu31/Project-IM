@@ -1,4 +1,4 @@
-package ws
+package handler
 
 import (
 	"Project-IM/internal/hub"
@@ -15,10 +15,10 @@ type Handler struct {
 	jwtMgr   *jwtpkg.Manager
 }
 
-func NewHandler(hub *hub.Hub, jwtMrg *jwtpkg.Manager) *Handler {
+func NewHandler(hub *hub.Hub, jwtMgr *jwtpkg.Manager) *Handler {
 	return &Handler{
 		hub:    hub,
-		jwtMgr: jwtMrg,
+		jwtMgr: jwtMgr,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // 开发阶段,允许所有来源
@@ -31,12 +31,14 @@ func NewHandler(hub *hub.Hub, jwtMrg *jwtpkg.Manager) *Handler {
 func (h *Handler) ServeWS(c *gin.Context) {
 	conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "WebSocket 升级失败"})
 		return
 	}
 
 	tokenStr := c.Query("token")
 	if tokenStr == "" {
 		// token 不存在
+		conn.Close()
 		return
 	}
 	claims, err := h.jwtMgr.Parse(tokenStr)
