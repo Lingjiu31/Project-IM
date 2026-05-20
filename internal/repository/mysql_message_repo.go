@@ -36,7 +36,7 @@ func (r *MySQLMessageRepo) FindByUser(ctx context.Context, senderID, targetID in
 	if err := r.db.WithContext(ctx).Where(
 		"(sender_id = ? AND target_id = ?) OR (sender_id = ? AND target_id = ?)",
 		senderID, targetID, targetID, senderID,
-	).Order("create_at DESC").Limit(limit).Offset(offset).Find(&pos).Error; err != nil {
+	).Order("created_at DESC").Limit(limit).Offset(offset).Find(&pos).Error; err != nil {
 		return nil, err
 	}
 	var msgs []*domain.Message

@@ -2,11 +2,13 @@ package router
 
 import (
 	"Project-IM/internal/handler"
+	"Project-IM/internal/middleware"
+	jwtpkg "Project-IM/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(ws *handler.Handler, user *handler.UserHandler) *gin.Engine {
+func NewRouter(ws *handler.Handler, user *handler.UserHandler, jwtMgr *jwtpkg.Manager) *gin.Engine {
 	r := gin.Default()
 
 	api := r.Group("/api")
@@ -15,7 +17,9 @@ func NewRouter(ws *handler.Handler, user *handler.UserHandler) *gin.Engine {
 		api.POST("/login", user.Login)
 	}
 
-	r.GET("/ws", ws.ServeWS)
+	// 需要鉴权的路由加中间件
+	auth := r.Group("/", middleware.JWTAuth(jwtMgr))
+	auth.GET("/ws", ws.ServeWS)
 
 	return r
 }
