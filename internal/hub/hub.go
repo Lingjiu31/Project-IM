@@ -38,32 +38,6 @@ func NewHub(msgRepo repository.MessageRepository) *Hub {
 	}
 }
 
-func (h *Hub) SendOfflineMessage(client *Client) {
-	msgs, err := h.msgRepo.FindUnread(context.Background(), client.userID)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	var msgIDs []int64
-	for _, msg := range msgs {
-		data, err := json.Marshal(msg)
-		if err != nil {
-			log.Println(err)
-			// 只跳过这一个
-			continue
-		}
-		client.send <- data
-		msgIDs = append(msgIDs, msg.ID)
-	}
-	if len(msgIDs) == 0 {
-		return
-	}
-	if err = h.msgRepo.MarkRead(context.Background(), msgIDs); err != nil {
-		log.Println(err)
-		return
-	}
-}
-
 func (h *Hub) Run() {
 	for {
 		select {
@@ -87,6 +61,7 @@ func (h *Hub) Run() {
 				TargetID:   msg.TargetID,
 				TargetType: msg.TargetType,
 				Content:    msg.Content,
+				Status:     domain.MsgStatusUnread,
 				CreatedAt:  time.Now(),
 			}
 			if err := h.msgRepo.Save(context.Background(), record); err != nil {

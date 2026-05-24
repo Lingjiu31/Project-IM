@@ -2,7 +2,10 @@ package hub
 
 import (
 	"Project-IM/internal/domain"
+	"Project-IM/internal/repository"
+	"context"
 	"encoding/json"
+	"log"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -15,14 +18,16 @@ type Client struct {
 	send       chan []byte
 	once       sync.Once
 	roomAction *RoomAction
+	msgRepo    repository.MessageRepository
 }
 
-func NewClient(userID int64, conn *websocket.Conn, hub *Hub) *Client {
+func NewClient(userID int64, conn *websocket.Conn, hub *Hub, msgRepo repository.MessageRepository) *Client {
 	return &Client{
-		userID: userID,
-		conn:   conn,
-		hub:    hub,
-		send:   make(chan []byte, 256),
+		userID:  userID,
+		conn:    conn,
+		hub:     hub,
+		send:    make(chan []byte, 256),
+		msgRepo: msgRepo,
 	}
 }
 
@@ -45,6 +50,32 @@ func (c *Client) LeaveRoom(roomID int64) {
 	c.hub.leaveRoom <- &RoomAction{
 		roomID: roomID,
 		client: c,
+	}
+}
+
+func (c *Client) SendOfflineMessage() {
+	msgs, err := c.msgRepo.FindUnread(context.Background(), c.userID)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	var msgIDs []int64
+	for _, msg := range msgs {
+		data, err := json.Marshal(msg)
+		if err != nil {
+			log.Println(err)
+			// 只跳过这一个
+			continue
+		}
+		c.send <- data
+		msgIDs = append(msgIDs, msg.ID)
+	}
+	if len(msgIDs) == 0 {
+		return
+	}
+	if err = c.msgRepo.MarkRead(context.Background(), msgIDs); err != nil {
+		log.Println(err)
+		return
 	}
 }
 
@@ -74,6 +105,15 @@ func (c *Client) WritePump() {
 		err := c.conn.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
 			break
+		}
+		var m domain.Message
+		if err = json.Unmarshal(msg, &m); err != nil {
+			log.Println(err)
+			continue
+		}
+		if err = c.msgRepo.MarkRead(context.Background(), []int64{m.ID}); err != nil {
+			log.Println(err)
+			continue
 		}
 	}
 }
