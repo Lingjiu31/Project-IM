@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>IM 测试</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        #log { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; margin: 10px 0; }
+        input { width: 300px; padding: 5px; }
+        button { padding: 5px 15px; margin-left: 5px; }
+        .connected { color: green; }
+        .disconnected { color: red; }
+        .received { color: blue; }
+        .sent { color: gray; }
+        .section { margin-bottom: 15px; }
+        label { display: inline-block; width: 80px; }
+    </style>
+</head>
+<body>
+    <h2>WebSocket 测试</h2>
+
+    <!-- 登录区域 -->
+    <div class="section">
+        <b>第一步：登录</b><br><br>
+        <label>用户名：</label><input id="username" type="text" value="test1" style="width:150px" />
+        <label style="margin-left:10px">密码：</label><input id="password" type="password" value="123456" style="width:150px" />
+        <button onclick="login()">登录</button>
+        <span id="login-status" style="margin-left:10px;color:gray">未登录</span>
+    </div>
+
+    <!-- 连接区域 -->
+    <div class="section">
+        <b>第二步：连接 WebSocket</b><br><br>
+        <button onclick="connect()">连接</button>
+        <button onclick="disconnect()">断开</button>
+        <span id="status" class="disconnected">未连接</span>
+    </div>
+
+    <!-- 发消息区域 -->
+    <div class="section">
+        <b>第三步：发消息</b><br><br>
+        <label>目标用户ID：</label><input id="target-id" type="number" value="2" style="width:60px" />
+        <br><br>
+        <label>消息内容：</label><input id="msg" type="text" placeholder="输入消息内容" />
+        <button onclick="sendMsg()">发送</button>
+    </div>
+
+    <div id="log"></div>
+
+    <script>
+        let ws = null
+        let token = null
+
+        function log(text, cls) {
+            const div = document.getElementById('log')
+            div.innerHTML += `<div class="${cls}">[${new Date().toLocaleTimeString()}] ${text}</div>`
+            div.scrollTop = div.scrollHeight
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value
+            const password = document.getElementById('password').value
+            try {
+                const resp = await fetch('http://localhost:8080/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                })
+                const data = await resp.json()
+                if (data.token) {
+                    token = data.token
+                    document.getElementById('login-status').textContent = `已登录 (${username})`
+                    document.getElementById('login-status').style.color = 'green'
+                    log(`登录成功，已获取 token`, 'connected')
+                } else {
+                    log(`登录失败：${data.error}`, 'disconnected')
+                }
+            } catch (e) {
+                log(`登录请求失败：${e}`, 'disconnected')
+            }
+        }
+
+        function connect() {
+            if (!token) {
+                log('请先登录', 'disconnected')
+                return
+            }
+            // WebSocket 不支持自定义 Header，token 通过 query 参数传递
+            ws = new WebSocket(`ws://localhost:8080/ws?token=${token}`)
+
+            ws.onopen = () => {
+                log('WebSocket 连接成功', 'connected')
+                document.getElementById('status').textContent = '已连接'
+                document.getElementById('status').className = 'connected'
+            }
+
+            ws.onmessage = (e) => {
+                log('收到：' + e.data, 'received')
+            }
+
+            ws.onclose = () => {
+                log('连接断开', 'disconnected')
+                document.getElementById('status').textContent = '未连接'
+                document.getElementById('status').className = 'disconnected'
+            }
+
+            ws.onerror = (e) => {
+                log('错误：' + e, 'disconnected')
+            }
+        }
+
+        function disconnect() {
+            if (ws) ws.close()
+        }
+
+        function sendMsg() {
+            const input = document.getElementById('msg')
+            const targetID = parseInt(document.getElementById('target-id').value)
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('未连接', 'disconnected')
+                return
+            }
+            const msg = {
+                type: "chat",
+                target_id: targetID,
+                target_type: 1,
+                content: input.value
+            }
+            ws.send(JSON.stringify(msg))
+            log('发送：' + JSON.stringify(msg), 'sent')
+            input.value = ''
+        }
+    </script>
+</body>
+</html>
