@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
 type Handler struct {
@@ -37,13 +38,12 @@ func (h *Handler) ServeWS(c *gin.Context) {
 
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
+		zap.L().Warn("WebSocket 连接缺少 user_id，拒绝连接")
 		conn.Close()
 		return
 	}
-	// 实例化 client
-	client := hub.NewClient(userID, conn, h.hub, h.msgRepo)
 
-	// 启动 goroutine
+	client := hub.NewClient(userID, conn, h.hub, h.msgRepo)
 	client.Register()
 	go client.SendOfflineMessage()
 	go client.ReadPump()

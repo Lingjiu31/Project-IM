@@ -7,8 +7,9 @@ import (
 	"Project-IM/internal/repository"
 	"Project-IM/internal/service"
 	jwtpkg "Project-IM/pkg/jwt"
+	"Project-IM/pkg/logger"
 	"context"
-	"log"
+	"errors"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -16,24 +17,26 @@ import (
 
 	"Project-IM/internal/router"
 
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func main() {
+	logger.Init()
 	cfg := config.Load()
 	db, err := gorm.Open(mysql.Open(cfg.DSN), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("连接数据库失败: %v", err)
+		zap.L().Fatal("连接数据库失败", zap.Error(err))
 	}
 
 	msgRepo := repository.NewMySQLMessageRepo(db)
 	if err = msgRepo.InitTable(); err != nil {
-		log.Fatalf("建表失败: %v", err)
+		zap.L().Fatal("建表失败", zap.Error(err))
 	}
 	userRepo := repository.NewMySQLUserRepo(db)
 	if err = userRepo.InitTable(); err != nil {
-		log.Fatalf("建表失败: %v", err)
+		zap.L().Fatal("建表失败", zap.Error(err))
 	}
 
 	imHub := hub.NewHub(msgRepo)
@@ -52,9 +55,9 @@ func main() {
 
 	// 启动服务
 	go func() {
-		log.Println("IM Server starting on :8080")
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+		zap.L().Info("IM Server starting on :8080")
+		if err = srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			zap.L().Fatal("Server error", zap.Error(err))
 		}
 	}()
 
@@ -64,14 +67,14 @@ func main() {
 	defer stop()
 
 	<-ctx.Done()
-	log.Println("Shutting down server...")
+	zap.L().Info("Shutting down server...")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("Forced shutdown: %v", err)
+	if err = srv.Shutdown(shutdownCtx); err != nil {
+		zap.L().Fatal("Server shutdown error", zap.Error(err))
 	}
 
-	log.Println("Server exited cleanly")
+	zap.L().Info("Server exiting")
 }
