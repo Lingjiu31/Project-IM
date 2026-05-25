@@ -7,8 +7,15 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+const (
+	pongWait   = 60 * time.Second    // 等待 Pong 的最长时间
+	pingPeriod = (pongWait * 9) / 10 // 发 Ping 间隔
+	writeWait  = 60 * time.Second    // 每次写操作的超时
 )
 
 type Client struct {
@@ -82,6 +89,15 @@ func (c *Client) SendOfflineMessage() {
 func (c *Client) ReadPump() {
 	// 不管因为什么原因出错结束函数,都会关闭通信通道
 	defer c.closeOnce()
+	// SetReadDeadline: 设置读操作截止时间，超时未收到数据则 ReadMessage() 返回 error
+	if err := c.conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		log.Println(err)
+		return
+	}
+	// SetPongHandler: 注册 Pong 帧回调，每次收到客户端的 Pong 自动触发
+	c.conn.SetPongHandler(func(string) error {
+		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	})
 	for {
 		_, p, err := c.conn.ReadMessage()
 		if err != nil {
@@ -101,19 +117,45 @@ func (c *Client) ReadPump() {
 func (c *Client) WritePump() {
 	defer c.conn.Close()
 	defer c.closeOnce()
-	for msg := range c.send {
-		err := c.conn.WriteMessage(websocket.TextMessage, msg)
-		if err != nil {
-			break
-		}
-		var m domain.Message
-		if err = json.Unmarshal(msg, &m); err != nil {
-			log.Println(err)
-			continue
-		}
-		if err = c.msgRepo.MarkRead(context.Background(), []int64{m.ID}); err != nil {
-			log.Println(err)
-			continue
+
+	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case msg, ok := <-c.send:
+			if !ok {
+				return
+			}
+			// SetWriteDeadline: 设置写操作截止时间，防止对端卡死时 WriteMessage 永久阻塞
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				log.Println(err)
+				return
+			}
+			if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+				log.Println(err)
+				return
+			}
+			var m domain.Message
+			if err := json.Unmarshal(msg, &m); err != nil {
+				log.Println(err)
+				continue
+			}
+			if err := c.msgRepo.MarkRead(context.Background(), []int64{m.ID}); err != nil {
+				log.Println(err)
+				continue
+			}
+		case <-ticker.C:
+			// ticker.C: 每隔 pingPeriod 自动发送一个时间值，用来触发定时任务
+			if err := c.conn.SetWriteDeadline(time.Now().Add(time.Second * 10)); err != nil {
+				log.Println(err)
+				return
+			}
+			// WriteMessage(PingMessage): 发送 WebSocket Ping 帧，客户端协议层自动回 Pong
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				log.Println(err)
+				return
+			}
 		}
 	}
 }
