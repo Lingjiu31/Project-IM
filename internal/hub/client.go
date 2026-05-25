@@ -15,7 +15,7 @@ import (
 const (
 	pongWait   = 60 * time.Second    // 等待 Pong 的最长时间
 	pingPeriod = (pongWait * 9) / 10 // 发 Ping 间隔
-	writeWait  = 60 * time.Second    // 每次写操作的超时
+	writeWait  = 10 * time.Second    // 每次写操作的超时
 )
 
 type Client struct {
@@ -147,7 +147,7 @@ func (c *Client) WritePump() {
 			}
 		case <-ticker.C:
 			// ticker.C: 每隔 pingPeriod 自动发送一个时间值，用来触发定时任务
-			if err := c.conn.SetWriteDeadline(time.Now().Add(time.Second * 10)); err != nil {
+			if err := c.conn.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
 				log.Println(err)
 				return
 			}
