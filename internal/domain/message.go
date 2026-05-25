@@ -37,9 +37,15 @@ const (
 
 // Room 聊天室（群聊）
 type Room struct {
-	ID      int64   `json:"id"`
-	Name    string  `json:"name"`
-	Members []int64 `json:"members"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+// GroupMember 群成员关系
+type GroupMember struct {
+	RoomID   int64     `json:"room_id"`
+	UserID   int64     `json:"user_id"`
+	JoinedAt time.Time `json:"joined_at"`
 }
 
 // WSMessage WebSocket 传输的消息结构
