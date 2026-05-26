@@ -22,11 +22,31 @@ type UserPO struct {
 	Avatar   string `gorm:"column:avatar;type:varchar(256);"`
 }
 
+type GroupPO struct {
+	ID        int64     `gorm:"primaryKey;autoIncrement"`
+	GroupName string    `gorm:"column:group_name;type:varchar(64);not null"`
+	CreatedAt time.Time `gorm:"column:created_at;autoCreateTime"`
+	CreatedBy int64     `gorm:"column:created_by;not null"`
+}
+
+type GroupMemberPO struct {
+	ID       int64     `gorm:"primaryKey;autoIncrement"`
+	GroupID  int64     `gorm:"column:group_id;not null"`
+	UserID   int64     `gorm:"column:user_id;not null"`
+	JoinedAt time.Time `gorm:"column:joined_at;autoCreateTime"`
+}
+
 func (MessagePO) TableName() string {
 	return "messages"
 }
 func (UserPO) TableName() string {
 	return "users"
+}
+func (GroupPO) TableName() string {
+	return "groups"
+}
+func (GroupMemberPO) TableName() string {
+	return "group_members"
 }
 
 func toMessagePO(msg *domain.Message) *MessagePO {

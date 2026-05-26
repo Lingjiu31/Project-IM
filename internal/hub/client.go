@@ -19,13 +19,12 @@ const (
 )
 
 type Client struct {
-	userID     int64
-	conn       *websocket.Conn
-	hub        *Hub
-	send       chan []byte // 待发送消息队列，WritePump 从这里取消息发出去
-	once       sync.Once   // 保证 closeOnce 只执行一次，防止 close(send) 被调用两次 panic
-	roomAction *RoomAction
-	msgRepo    repository.MessageRepository
+	userID  int64
+	conn    *websocket.Conn
+	hub     *Hub
+	send    chan []byte // 待发送消息队列，WritePump 从这里取消息发出去
+	once    sync.Once   // 保证 closeOnce 只执行一次，防止 close(send) 被调用两次 panic
+	msgRepo repository.MessageRepository
 }
 
 func NewClient(userID int64, conn *websocket.Conn, hub *Hub, msgRepo repository.MessageRepository) *Client {
@@ -46,17 +45,17 @@ func (c *Client) Unregister() {
 	c.hub.unregister <- c
 }
 
-func (c *Client) JoinRoom(roomID int64) {
-	c.hub.joinRoom <- &RoomAction{
-		roomID: roomID,
-		client: c,
+func (c *Client) JoinGroup(groupID int64) {
+	c.hub.joinGroup <- &GroupAction{
+		groupID: groupID,
+		client:  c,
 	}
 }
 
-func (c *Client) LeaveRoom(roomID int64) {
-	c.hub.leaveRoom <- &RoomAction{
-		roomID: roomID,
-		client: c,
+func (c *Client) LeaveGroup(groupID int64) {
+	c.hub.leaveGroup <- &GroupAction{
+		groupID: groupID,
+		client:  c,
 	}
 }
 

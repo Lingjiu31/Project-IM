@@ -24,8 +24,8 @@ type Message struct {
 type TargetType int8
 
 const (
-	TargetTypeUser TargetType = 1 // 单聊
-	TargetTypeRoom TargetType = 2 // 群聊
+	TargetTypeUser  TargetType = 1 // 单聊
+	TargetTypeGroup TargetType = 2 // 群聊
 )
 
 type MsgStatus int8
@@ -35,8 +35,8 @@ const (
 	MsgStatusRead   MsgStatus = 1
 )
 
-// Room 聊天室（群聊）
-type Room struct {
+// Group 聊天室（群聊）
+type Group struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
 }
