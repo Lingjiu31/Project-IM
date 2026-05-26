@@ -30,9 +30,8 @@ type GroupPO struct {
 }
 
 type GroupMemberPO struct {
-	ID       int64     `gorm:"primaryKey;autoIncrement"`
-	GroupID  int64     `gorm:"column:group_id;not null"`
-	UserID   int64     `gorm:"column:user_id;not null"`
+	GroupID  int64     `gorm:"primaryKey;column:group_id"`
+	UserID   int64     `gorm:"primaryKey;column:user_id"`
 	JoinedAt time.Time `gorm:"column:joined_at;autoCreateTime"`
 }
 
