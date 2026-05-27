@@ -36,6 +36,7 @@ func main() {
 
 	msgRepo := repository.NewMySQLMessageRepo(db)
 	userRepo := repository.NewMySQLUserRepo(db)
+	groupRepo := repository.NewMySQLGroupRepo(db)
 
 	imHub := hub.NewHub(msgRepo)
 	go imHub.Run()
@@ -44,7 +45,9 @@ func main() {
 	wsHandler := handler.NewHandler(imHub, msgRepo)
 	userSvc := service.NewUserService(userRepo, jwtMgr)
 	userHandler := handler.NewUserHandler(userSvc)
-	r := router.NewRouter(wsHandler, userHandler, jwtMgr)
+	groupSvc := service.NewGroupService(groupRepo)
+	groupHandler := handler.NewGroupHandler(groupSvc)
+	r := router.NewRouter(wsHandler, userHandler, groupHandler, jwtMgr)
 
 	srv := &http.Server{
 		Addr:    cfg.Addr,

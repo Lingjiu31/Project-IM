@@ -10,7 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(ws *handler.Handler, user *handler.UserHandler, jwtMgr *jwtpkg.Manager) *gin.Engine {
+func NewRouter(ws *handler.Handler, user *handler.UserHandler,
+	group *handler.GroupHandler, jwtMgr *jwtpkg.Manager) *gin.Engine {
 	r := gin.Default()
 
 	// CORS 中间件，开发阶段允许所有来源
@@ -31,7 +32,11 @@ func NewRouter(ws *handler.Handler, user *handler.UserHandler, jwtMgr *jwtpkg.Ma
 
 	// 需要鉴权的路由加中间件
 	auth := r.Group("/", middleware.JWTAuth(jwtMgr))
-	auth.GET("/ws", ws.ServeWS)
+	{
+		auth.GET("/ws", ws.ServeWS)
+		auth.POST("/groups", group.CreateGroup)
+		auth.POST("/groups/:id/members", group.JoinGroup)
+	}
 
 	return r
 }
