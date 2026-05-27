@@ -89,3 +89,29 @@ func toUserPO(user *domain.User) *UserPO {
 		Avatar:   user.Avatar,
 	}
 }
+
+func toGroupPO(group *domain.Group) *GroupPO {
+	return &GroupPO{
+		ID:        group.ID,
+		GroupName: group.Name,
+		CreatedBy: group.CreatedBy,
+		CreatedAt: group.CreatedAt,
+	}
+}
+
+func toDomainGroup(po *GroupPO) *domain.Group {
+	return &domain.Group{
+		ID:        po.ID,
+		Name:      po.GroupName,
+		CreatedBy: po.CreatedBy,
+		CreatedAt: po.CreatedAt,
+	}
+}
+
+func toDomainGroupMember(po *GroupMemberPO) *domain.GroupMember {
+	return &domain.GroupMember{
+		GroupID:  po.GroupID,
+		UserID:   po.UserID,
+		JoinedAt: po.JoinedAt,
+	}
+}

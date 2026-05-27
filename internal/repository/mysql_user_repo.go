@@ -11,12 +11,8 @@ type MySQLUserRepo struct {
 	db *gorm.DB
 }
 
-func NewMySQLUserRepo(db *gorm.DB) *MySQLUserRepo {
+func NewMySQLUserRepo(db *gorm.DB) UserRepository {
 	return &MySQLUserRepo{db: db}
-}
-
-func (r *MySQLUserRepo) InitTable() error {
-	return r.db.AutoMigrate(&UserPO{})
 }
 
 func (r *MySQLUserRepo) Save(ctx context.Context, user *domain.User) error {

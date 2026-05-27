@@ -30,14 +30,12 @@ func main() {
 		zap.L().Fatal("连接数据库失败", zap.Error(err))
 	}
 
+	if err = repository.AutoMigrate(db); err != nil {
+		zap.L().Fatal("建表失败", zap.Error(err))
+	}
+
 	msgRepo := repository.NewMySQLMessageRepo(db)
-	if err = msgRepo.InitTable(); err != nil {
-		zap.L().Fatal("建表失败", zap.Error(err))
-	}
 	userRepo := repository.NewMySQLUserRepo(db)
-	if err = userRepo.InitTable(); err != nil {
-		zap.L().Fatal("建表失败", zap.Error(err))
-	}
 
 	imHub := hub.NewHub(msgRepo)
 	go imHub.Run()

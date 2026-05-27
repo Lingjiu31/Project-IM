@@ -11,12 +11,8 @@ type MySQLMessageRepo struct {
 	db *gorm.DB
 }
 
-func NewMySQLMessageRepo(db *gorm.DB) *MySQLMessageRepo {
+func NewMySQLMessageRepo(db *gorm.DB) MessageRepository {
 	return &MySQLMessageRepo{db: db}
-}
-
-func (r *MySQLMessageRepo) InitTable() error {
-	return r.db.AutoMigrate(&MessagePO{})
 }
 
 func (r *MySQLMessageRepo) Save(ctx context.Context, msg *domain.Message) error {
