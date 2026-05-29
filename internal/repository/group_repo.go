@@ -10,4 +10,5 @@ type GroupRepository interface {
 	FindByGroupID(ctx context.Context, groupID int64) (*domain.Group, error)
 	AddMember(ctx context.Context, groupID int64, userID int64) error
 	FindMembers(ctx context.Context, groupID int64) ([]*domain.GroupMember, error)
+	FindGroupsByUserID(ctx context.Context, userID int64) ([]*domain.GroupMember, error)
 }

@@ -42,11 +42,11 @@ func main() {
 	go imHub.Run()
 
 	jwtMgr := jwtpkg.NewManager(cfg.JWTSecret)
-	wsHandler := handler.NewHandler(imHub, msgRepo)
+	wsHandler := handler.NewHandler(imHub, msgRepo, groupRepo)
 	userSvc := service.NewUserService(userRepo, jwtMgr)
 	userHandler := handler.NewUserHandler(userSvc)
 	groupSvc := service.NewGroupService(groupRepo)
-	groupHandler := handler.NewGroupHandler(groupSvc)
+	groupHandler := handler.NewGroupHandler(groupSvc, imHub)
 	r := router.NewRouter(wsHandler, userHandler, groupHandler, jwtMgr)
 
 	srv := &http.Server{

@@ -23,7 +23,7 @@ type Hub struct {
 
 type GroupAction struct {
 	groupID int64
-	client  *Client
+	userID  int64
 }
 
 func NewHub(msgRepo repository.MessageRepository) *Hub {
@@ -39,6 +39,10 @@ func NewHub(msgRepo repository.MessageRepository) *Hub {
 	}
 }
 
+func (h *Hub) UserJoinGroup(userID, groupID int64) {
+	h.joinGroup <- &GroupAction{groupID, userID}
+}
+
 // Run 是 Hub 的核心调度循环，所有对 clients/groups 的读写都在这一个 goroutine 里完成
 // 用 channel 传递操作请求，避免并发读写 map 导致的 data race
 func (h *Hub) Run() {
@@ -52,9 +56,9 @@ func (h *Hub) Run() {
 			if h.groups[action.groupID] == nil {
 				h.groups[action.groupID] = make(map[int64]bool)
 			}
-			h.groups[action.groupID][action.client.userID] = true
+			h.groups[action.groupID][action.userID] = true
 		case action := <-h.leaveGroup:
-			delete(h.groups[action.groupID], action.client.userID)
+			delete(h.groups[action.groupID], action.userID)
 		case msg := <-h.broadcast:
 			// 先存库，再转发
 			record := &domain.Message{

@@ -11,15 +11,18 @@ import (
 )
 
 type Handler struct {
-	hub      *hub.Hub
-	msgRepo  repository.MessageRepository
-	upgrader websocket.Upgrader
+	hub       *hub.Hub
+	msgRepo   repository.MessageRepository
+	groupRepo repository.GroupRepository
+	upgrader  websocket.Upgrader
 }
 
-func NewHandler(hub *hub.Hub, msgRepo repository.MessageRepository) *Handler {
+func NewHandler(hub *hub.Hub, msgRepo repository.MessageRepository,
+	groupRepo repository.GroupRepository) *Handler {
 	return &Handler{
-		hub:     hub,
-		msgRepo: msgRepo,
+		hub:       hub,
+		msgRepo:   msgRepo,
+		groupRepo: groupRepo,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // 开发阶段,允许所有来源
@@ -45,6 +48,13 @@ func (h *Handler) ServeWS(c *gin.Context) {
 
 	client := hub.NewClient(userID, conn, h.hub, h.msgRepo)
 	client.Register()
+	members, err := h.groupRepo.FindGroupsByUserID(c.Request.Context(), userID)
+	if err != nil {
+		zap.L().Error("查询群聊失败", zap.Int64("userID", userID), zap.Error(err))
+	}
+	for _, member := range members {
+		client.JoinGroup(member.GroupID)
+	}
 	go client.SendOfflineMessage()
 	go client.ReadPump()
 	go client.WritePump()

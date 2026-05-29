@@ -13,6 +13,19 @@ type MySQLGroupRepo struct {
 	db *gorm.DB
 }
 
+func (r *MySQLGroupRepo) FindGroupsByUserID(ctx context.Context, userID int64) ([]*domain.GroupMember, error) {
+	var pos []GroupMemberPO
+	if err := r.db.WithContext(ctx).
+		Where("user_id = ?", userID).Find(&pos).Error; err != nil {
+		return nil, err
+	}
+	members := make([]*domain.GroupMember, 0, len(pos))
+	for _, po := range pos {
+		members = append(members, toDomainGroupMember(&po))
+	}
+	return members, nil
+}
+
 func NewMySQLGroupRepo(db *gorm.DB) GroupRepository {
 	return &MySQLGroupRepo{
 		db: db,

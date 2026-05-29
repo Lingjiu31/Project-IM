@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"Project-IM/internal/hub"
 	"Project-IM/internal/service"
 	"net/http"
 	"strconv"
@@ -10,10 +11,11 @@ import (
 
 type GroupHandler struct {
 	svc *service.GroupService
+	hub *hub.Hub
 }
 
-func NewGroupHandler(svc *service.GroupService) *GroupHandler {
-	return &GroupHandler{svc: svc}
+func NewGroupHandler(svc *service.GroupService, hub *hub.Hub) *GroupHandler {
+	return &GroupHandler{svc: svc, hub: hub}
 }
 
 type CreateGroupReq struct {
@@ -51,6 +53,7 @@ func (h *GroupHandler) JoinGroup(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	h.hub.UserJoinGroup(userID, groupID)
 	ctx.JSON(http.StatusCreated, gin.H{
 		"message": "加入成功",
 	})

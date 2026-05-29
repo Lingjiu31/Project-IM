@@ -48,14 +48,14 @@ func (c *Client) Unregister() {
 func (c *Client) JoinGroup(groupID int64) {
 	c.hub.joinGroup <- &GroupAction{
 		groupID: groupID,
-		client:  c,
+		userID:  c.userID,
 	}
 }
 
 func (c *Client) LeaveGroup(groupID int64) {
 	c.hub.leaveGroup <- &GroupAction{
 		groupID: groupID,
-		client:  c,
+		userID:  c.userID,
 	}
 }
 
