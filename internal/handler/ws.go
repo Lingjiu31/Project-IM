@@ -46,7 +46,7 @@ func (h *Handler) ServeWS(c *gin.Context) {
 		return
 	}
 
-	client := hub.NewClient(userID, conn, h.hub, h.msgRepo)
+	client := hub.NewClient(userID, conn, h.hub, h.msgRepo, h.groupRepo)
 	client.Register()
 	members, err := h.groupRepo.FindGroupsByUserID(c.Request.Context(), userID)
 	if err != nil {
@@ -56,6 +56,7 @@ func (h *Handler) ServeWS(c *gin.Context) {
 		client.JoinGroup(member.GroupID)
 	}
 	go client.SendOfflineMessage()
+	go client.SendGroupOfflineMessage()
 	go client.ReadPump()
 	go client.WritePump()
 }

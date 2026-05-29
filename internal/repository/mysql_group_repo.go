@@ -73,3 +73,13 @@ func (r *MySQLGroupRepo) FindMembers(ctx context.Context, groupID int64) ([]*dom
 	}
 	return members, nil
 }
+func (r *MySQLGroupRepo) UpdateLastSeen(ctx context.Context,
+	userID, groupID int64, t time.Time) error {
+	if err := r.db.WithContext(ctx).
+		Model(&GroupMemberPO{}).
+		Where("user_id = ? AND group_id = ?", userID, groupID).
+		Update("last_seen_at", t).Error; err != nil {
+		return err
+	}
+	return nil
+}

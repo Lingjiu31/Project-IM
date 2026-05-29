@@ -19,21 +19,24 @@ const (
 )
 
 type Client struct {
-	userID  int64
-	conn    *websocket.Conn
-	hub     *Hub
-	send    chan []byte // 待发送消息队列，WritePump 从这里取消息发出去
-	once    sync.Once   // 保证 closeOnce 只执行一次，防止 close(send) 被调用两次 panic
-	msgRepo repository.MessageRepository
+	userID    int64
+	conn      *websocket.Conn
+	hub       *Hub
+	send      chan []byte // 待发送消息队列，WritePump 从这里取消息发出去
+	once      sync.Once   // 保证 closeOnce 只执行一次，防止 close(send) 被调用两次 panic
+	msgRepo   repository.MessageRepository
+	groupRepo repository.GroupRepository
 }
 
-func NewClient(userID int64, conn *websocket.Conn, hub *Hub, msgRepo repository.MessageRepository) *Client {
+func NewClient(userID int64, conn *websocket.Conn, hub *Hub,
+	msgRepo repository.MessageRepository, groupRepo repository.GroupRepository) *Client {
 	return &Client{
-		userID:  userID,
-		conn:    conn,
-		hub:     hub,
-		send:    make(chan []byte, 256),
-		msgRepo: msgRepo,
+		userID:    userID,
+		conn:      conn,
+		hub:       hub,
+		send:      make(chan []byte, 256),
+		msgRepo:   msgRepo,
+		groupRepo: groupRepo,
 	}
 }
 
@@ -59,6 +62,22 @@ func (c *Client) LeaveGroup(groupID int64) {
 	}
 }
 
+// 跟新离线时间
+func (c *Client) updateGroupLastSeen() {
+	groups, err := c.groupRepo.FindGroupsByUserID(context.Background(), c.userID)
+	if err != nil {
+		zap.L().Error("读取群聊失败", zap.Int64("userID", c.userID), zap.Error(err))
+		return
+	}
+	now := time.Now()
+	for _, group := range groups {
+		if err = c.groupRepo.UpdateLastSeen(context.Background(), c.userID, group.GroupID, now); err != nil {
+			zap.L().Error("更新离线时间失败", zap.Int64("groupID", group.GroupID), zap.Error(err))
+			continue
+		}
+	}
+}
+
 // SendOfflineMessage 用户上线时补发未读消息，发完标记为已读
 func (c *Client) SendOfflineMessage() {
 	msgs, err := c.msgRepo.FindUnread(context.Background(), c.userID)
@@ -81,6 +100,36 @@ func (c *Client) SendOfflineMessage() {
 	}
 	if err = c.msgRepo.MarkRead(context.Background(), msgIDs); err != nil {
 		zap.L().Error("标记离线消息已读失败", zap.Int64("userID", c.userID), zap.Error(err))
+	}
+}
+
+// SendGroupOfflineMessage 补发未上线时群聊消息
+func (c *Client) SendGroupOfflineMessage() {
+	groups, err := c.groupRepo.FindGroupsByUserID(context.Background(), c.userID)
+	if err != nil {
+		zap.L().Error("读取群聊失败", zap.Int64("userID", c.userID), zap.Error(err))
+		return
+	}
+	for _, group := range groups {
+		if group.LastSeenAt == nil {
+			// 首次上线
+			continue
+		}
+		msgs, err := c.msgRepo.FindGroupMessagesSince(context.Background(),
+			group.GroupID, *group.LastSeenAt)
+		if err != nil {
+			zap.L().Error("查找消息失败", zap.Int64("groupID", group.GroupID), zap.Error(err))
+			continue
+		}
+		for _, msg := range msgs {
+			data, err := json.Marshal(msg)
+			if err != nil {
+				zap.L().Error("消息序列化失败", zap.Int64("msgID", msg.ID), zap.Error(err))
+				continue
+			}
+			c.send <- data
+		}
+
 	}
 }
 
@@ -163,6 +212,7 @@ func (c *Client) WritePump() {
 // ReadPump 和 WritePump 都会触发，sync.Once 防止 close(send) 重复调用 panic
 func (c *Client) closeOnce() {
 	c.once.Do(func() {
+		c.updateGroupLastSeen()
 		c.Unregister()
 		close(c.send)
 	})

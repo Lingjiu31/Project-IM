@@ -30,9 +30,10 @@ type GroupPO struct {
 }
 
 type GroupMemberPO struct {
-	GroupID  int64     `gorm:"primaryKey;column:group_id"`
-	UserID   int64     `gorm:"primaryKey;column:user_id"`
-	JoinedAt time.Time `gorm:"column:joined_at;autoCreateTime"`
+	GroupID    int64      `gorm:"primaryKey;column:group_id"`
+	UserID     int64      `gorm:"primaryKey;column:user_id"`
+	JoinedAt   time.Time  `gorm:"column:joined_at;autoCreateTime"`
+	LastSeenAt *time.Time `gorm:"column:last_seen_at"` // 由于第一次上线是没有这个值, 所以使用指针不然是NULL不能补发
 }
 
 func (MessagePO) TableName() string {
@@ -110,8 +111,9 @@ func toDomainGroup(po *GroupPO) *domain.Group {
 
 func toDomainGroupMember(po *GroupMemberPO) *domain.GroupMember {
 	return &domain.GroupMember{
-		GroupID:  po.GroupID,
-		UserID:   po.UserID,
-		JoinedAt: po.JoinedAt,
+		GroupID:    po.GroupID,
+		UserID:     po.UserID,
+		JoinedAt:   po.JoinedAt,
+		LastSeenAt: po.LastSeenAt,
 	}
 }

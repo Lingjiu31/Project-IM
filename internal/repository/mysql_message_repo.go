@@ -3,6 +3,7 @@ package repository
 import (
 	"Project-IM/internal/domain"
 	"context"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -65,4 +66,21 @@ func (r *MySQLMessageRepo) MarkRead(ctx context.Context, msgIDs []int64) error {
 		return err
 	}
 	return nil
+}
+
+func (r *MySQLMessageRepo) FindGroupMessagesSince(ctx context.Context,
+	groupID int64, since time.Time) ([]*domain.Message, error) {
+	var pos []*MessagePO
+	if err := r.db.WithContext(ctx).
+		Where("target_id = ? AND target_type = ? AND created_at > ? ",
+			groupID, domain.TargetTypeGroup, since).
+		Order("created_at ASC").
+		Find(&pos).Error; err != nil {
+		return nil, err
+	}
+	msgs := make([]*domain.Message, 0, len(pos))
+	for _, po := range pos {
+		msgs = append(msgs, toDomainMessage(po))
+	}
+	return msgs, nil
 }

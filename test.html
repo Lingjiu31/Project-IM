@@ -2,134 +2,249 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>IM 测试</title>
+    <title>IM 测试面板</title>
     <style>
-        body { font-family: monospace; padding: 20px; }
-        #log { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; margin: 10px 0; }
-        input { width: 300px; padding: 5px; }
-        button { padding: 5px 15px; margin-left: 5px; }
-        .connected { color: green; }
-        .disconnected { color: red; }
-        .received { color: blue; }
-        .sent { color: gray; }
-        .section { margin-bottom: 15px; }
-        label { display: inline-block; width: 80px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; background: #f5f6f8; color: #222; }
+
+        .layout { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+
+        /* 左侧面板 */
+        .sidebar { background: #fff; border-right: 1px solid #e0e0e0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+        .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 14px; }
+        .card-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+
+        .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+        .field label { font-size: 12px; color: #555; }
+        .field input { border: 1px solid #ddd; border-radius: 6px; padding: 6px 10px; font-size: 13px; outline: none; transition: border-color 0.2s; }
+        .field input:focus { border-color: #4f8ef7; }
+
+        .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        button { border: none; border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+        button:hover { opacity: 0.85; }
+        .btn-blue { background: #4f8ef7; color: #fff; }
+        .btn-gray { background: #e8e8e8; color: #333; }
+        .btn-red { background: #f76f6f; color: #fff; }
+        .btn-green { background: #3ecf8e; color: #fff; }
+        .btn-orange { background: #f5a623; color: #fff; }
+
+        .status-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: #888; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; }
+        .dot.green { background: #3ecf8e; }
+        .dot.red { background: #f76f6f; }
+
+        /* 右侧日志 */
+        .main { display: flex; flex-direction: column; background: #f5f6f8; }
+
+        .log-header { padding: 12px 16px; background: #fff; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between; }
+        .log-header span { font-weight: 600; font-size: 14px; }
+
+        #log { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; }
+
+        .log-item { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-family: "SF Mono", "Fira Code", monospace; line-height: 1.5; }
+        .log-item .time { color: #aaa; margin-right: 6px; }
+        .log-ok   { background: #edfaf3; color: #1a7a4a; border-left: 3px solid #3ecf8e; }
+        .log-err  { background: #fef0f0; color: #c0392b; border-left: 3px solid #f76f6f; }
+        .log-sent { background: #f0f5ff; color: #2c5fa8; border-left: 3px solid #4f8ef7; }
+        .log-recv { background: #fff8ee; color: #8a5800; border-left: 3px solid #f5a623; }
+        .log-sys  { background: #f5f5f5; color: #888; border-left: 3px solid #ccc; }
+
+        /* 发送栏 */
+        .send-bar { background: #fff; border-top: 1px solid #e0e0e0; padding: 12px 16px; }
+        .send-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+        .send-tab { background: #f0f0f0; color: #555; border-radius: 5px; padding: 4px 12px; font-size: 12px; }
+        .send-tab.active { background: #4f8ef7; color: #fff; }
+        .send-form { display: none; align-items: center; gap: 8px; }
+        .send-form.active { display: flex; }
+        .send-form input[type=number] { width: 70px; border: 1px solid #ddd; border-radius: 6px; padding: 7px 8px; font-size: 13px; outline: none; }
+        .send-form input[type=text] { flex: 1; border: 1px solid #ddd; border-radius: 6px; padding: 7px 10px; font-size: 13px; outline: none; }
+        .send-form input:focus { border-color: #4f8ef7; }
+        .send-form label { font-size: 12px; color: #888; white-space: nowrap; }
     </style>
 </head>
 <body>
-    <h2>WebSocket 测试</h2>
+<div class="layout">
 
-    <!-- 登录区域 -->
-    <div class="section">
-        <b>第一步：登录</b><br><br>
-        <label>用户名：</label><input id="username" type="text" value="test1" style="width:150px" />
-        <label style="margin-left:10px">密码：</label><input id="password" type="password" value="123456" style="width:150px" />
-        <button onclick="login()">登录</button>
-        <span id="login-status" style="margin-left:10px;color:gray">未登录</span>
+    <!-- 左侧 -->
+    <div class="sidebar">
+
+        <div class="card">
+            <div class="card-title">注册</div>
+            <div class="field"><label>用户名</label><input id="reg-user" type="text" placeholder="新用户名" /></div>
+            <div class="field"><label>密码</label><input id="reg-pass" type="password" placeholder="密码" /></div>
+            <div class="btn-row"><button class="btn-gray" onclick="register()">注册</button></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">登录</div>
+            <div class="field"><label>用户名</label><input id="username" type="text" value="test1" /></div>
+            <div class="field"><label>密码</label><input id="password" type="password" value="123456" /></div>
+            <div class="btn-row"><button class="btn-blue" onclick="login()">登录</button></div>
+            <div class="status-row"><div class="dot" id="login-dot"></div><span id="login-status">未登录</span></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">WebSocket</div>
+            <div class="btn-row">
+                <button class="btn-green" onclick="connect()">连接</button>
+                <button class="btn-red" onclick="disconnect()">断开</button>
+            </div>
+            <div class="status-row"><div class="dot" id="ws-dot"></div><span id="ws-status">未连接</span></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">群组</div>
+            <div class="field"><label>群名称</label><input id="group-name" type="text" placeholder="输入群名" /></div>
+            <div class="btn-row"><button class="btn-orange" onclick="createGroup()">创建群</button></div>
+            <div style="margin-top:10px">
+                <div class="field"><label>群 ID</label><input id="join-gid" type="number" placeholder="群ID" /></div>
+                <div class="btn-row"><button class="btn-blue" onclick="joinGroup()">加入群</button></div>
+            </div>
+            <div id="group-info" style="margin-top:8px;font-size:12px;color:#888"></div>
+        </div>
+
     </div>
 
-    <!-- 连接区域 -->
-    <div class="section">
-        <b>第二步：连接 WebSocket</b><br><br>
-        <button onclick="connect()">连接</button>
-        <button onclick="disconnect()">断开</button>
-        <span id="status" class="disconnected">未连接</span>
+    <!-- 右侧 -->
+    <div class="main">
+        <div class="log-header">
+            <span>消息日志</span>
+            <button class="btn-gray" style="font-size:12px;padding:4px 10px" onclick="document.getElementById('log').innerHTML=''">清空</button>
+        </div>
+        <div id="log"></div>
+
+        <div class="send-bar">
+            <div class="send-tabs">
+                <button class="send-tab active" onclick="switchTab('dm')">私聊</button>
+                <button class="send-tab" onclick="switchTab('group')">群聊</button>
+            </div>
+            <div class="send-form active" id="form-dm">
+                <label>目标 UID</label>
+                <input type="number" id="target-id" value="2" />
+                <input type="text" id="dm-msg" placeholder="输入消息，回车发送" onkeydown="if(event.key==='Enter')sendDM()" />
+                <button class="btn-blue" onclick="sendDM()">发送</button>
+            </div>
+            <div class="send-form" id="form-group">
+                <label>群 ID</label>
+                <input type="number" id="group-msg-id" placeholder="群ID" />
+                <input type="text" id="group-msg" placeholder="输入群消息，回车发送" onkeydown="if(event.key==='Enter')sendGroup()" />
+                <button class="btn-blue" onclick="sendGroup()">发送</button>
+            </div>
+        </div>
     </div>
+</div>
 
-    <!-- 发消息区域 -->
-    <div class="section">
-        <b>第三步：发消息</b><br><br>
-        <label>目标用户ID：</label><input id="target-id" type="number" value="2" style="width:60px" />
-        <br><br>
-        <label>消息内容：</label><input id="msg" type="text" placeholder="输入消息内容" />
-        <button onclick="sendMsg()">发送</button>
-    </div>
+<script>
+    let ws = null, token = null
+    const BASE = 'http://localhost:8080'
 
-    <div id="log"></div>
+    function log(text, cls='sys') {
+        const t = new Date().toLocaleTimeString('zh', {hour12:false})
+        const d = document.getElementById('log')
+        d.innerHTML += `<div class="log-item log-${cls}"><span class="time">${t}</span>${text}</div>`
+        d.scrollTop = d.scrollHeight
+    }
 
-    <script>
-        let ws = null
-        let token = null
+    function switchTab(tab) {
+        document.querySelectorAll('.send-tab').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='dm')||(i===1&&tab==='group')))
+        document.getElementById('form-dm').classList.toggle('active', tab==='dm')
+        document.getElementById('form-group').classList.toggle('active', tab==='group')
+    }
 
-        function log(text, cls) {
-            const div = document.getElementById('log')
-            div.innerHTML += `<div class="${cls}">[${new Date().toLocaleTimeString()}] ${text}</div>`
-            div.scrollTop = div.scrollHeight
+    async function register() {
+        const username = document.getElementById('reg-user').value
+        const password = document.getElementById('reg-pass').value
+        if (!username||!password) { log('请填写用户名和密码','err'); return }
+        try {
+            const r = await fetch(`${BASE}/api/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password}) })
+            const d = await r.json()
+            r.ok ? log(`注册成功：${username}`,'ok') : log(`注册失败：${d.error}`,'err')
+        } catch(e) { log(`请求失败：${e}`,'err') }
+    }
+
+    async function login() {
+        const username = document.getElementById('username').value
+        const password = document.getElementById('password').value
+        try {
+            const r = await fetch(`${BASE}/api/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username,password}) })
+            const d = await r.json()
+            if (d.token) {
+                token = d.token
+                document.getElementById('login-dot').className = 'dot green'
+                document.getElementById('login-status').textContent = `已登录：${username}`
+                log(`登录成功 → ${username}`,'ok')
+            } else {
+                document.getElementById('login-dot').className = 'dot red'
+                log(`登录失败：${d.error}`,'err')
+            }
+        } catch(e) { log(`请求失败：${e}`,'err') }
+    }
+
+    function connect() {
+        if (!token) { log('请先登录','err'); return }
+        ws = new WebSocket(`ws://localhost:8080/ws?token=${token}`)
+        ws.onopen = () => {
+            document.getElementById('ws-dot').className = 'dot green'
+            document.getElementById('ws-status').textContent = '已连接'
+            log('WebSocket 连接成功','ok')
         }
-
-        async function login() {
-            const username = document.getElementById('username').value
-            const password = document.getElementById('password').value
-            try {
-                const resp = await fetch('http://localhost:8080/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                })
-                const data = await resp.json()
-                if (data.token) {
-                    token = data.token
-                    document.getElementById('login-status').textContent = `已登录 (${username})`
-                    document.getElementById('login-status').style.color = 'green'
-                    log(`登录成功，已获取 token`, 'connected')
-                } else {
-                    log(`登录失败：${data.error}`, 'disconnected')
-                }
-            } catch (e) {
-                log(`登录请求失败：${e}`, 'disconnected')
-            }
+        ws.onmessage = e => log(`收到 ← ${e.data}`,'recv')
+        ws.onclose = () => {
+            document.getElementById('ws-dot').className = 'dot red'
+            document.getElementById('ws-status').textContent = '未连接'
+            log('WebSocket 断开','sys')
         }
+        ws.onerror = () => log('WebSocket 错误','err')
+    }
+    function disconnect() { if (ws) ws.close() }
 
-        function connect() {
-            if (!token) {
-                log('请先登录', 'disconnected')
-                return
-            }
-            // WebSocket 不支持自定义 Header，token 通过 query 参数传递
-            ws = new WebSocket(`ws://localhost:8080/ws?token=${token}`)
+    async function createGroup() {
+        if (!token) { log('请先登录','err'); return }
+        const name = document.getElementById('group-name').value
+        if (!name) { log('请输入群名','err'); return }
+        try {
+            const r = await fetch(`${BASE}/groups`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body:JSON.stringify({name}) })
+            const d = await r.json()
+            if (r.ok) {
+                document.getElementById('group-info').textContent = `群ID: ${d.group_id}  名称: ${d.name}`
+                document.getElementById('join-gid').value = d.group_id
+                document.getElementById('group-msg-id').value = d.group_id
+                log(`创建群成功 → ID=${d.group_id} "${d.name}"`,'ok')
+            } else { log(`创建群失败：${d.error}`,'err') }
+        } catch(e) { log(`请求失败：${e}`,'err') }
+    }
 
-            ws.onopen = () => {
-                log('WebSocket 连接成功', 'connected')
-                document.getElementById('status').textContent = '已连接'
-                document.getElementById('status').className = 'connected'
-            }
+    async function joinGroup() {
+        if (!token) { log('请先登录','err'); return }
+        const gid = document.getElementById('join-gid').value
+        if (!gid) { log('请输入群ID','err'); return }
+        try {
+            const r = await fetch(`${BASE}/groups/${gid}/members`, { method:'POST', headers:{'Authorization':`Bearer ${token}`} })
+            const d = await r.json()
+            r.ok ? log(`加入群 ${gid} 成功`,'ok') : log(`加入群失败：${d.error}`,'err')
+        } catch(e) { log(`请求失败：${e}`,'err') }
+    }
 
-            ws.onmessage = (e) => {
-                log('收到：' + e.data, 'received')
-            }
+    function sendDM() {
+        const input = document.getElementById('dm-msg')
+        const targetID = parseInt(document.getElementById('target-id').value)
+        if (!ws||ws.readyState!==WebSocket.OPEN) { log('WS未连接','err'); return }
+        const msg = { type:'chat', target_id:targetID, target_type:1, content:input.value }
+        ws.send(JSON.stringify(msg))
+        log(`发送 → ${JSON.stringify(msg)}`,'sent')
+        input.value = ''
+    }
 
-            ws.onclose = () => {
-                log('连接断开', 'disconnected')
-                document.getElementById('status').textContent = '未连接'
-                document.getElementById('status').className = 'disconnected'
-            }
-
-            ws.onerror = (e) => {
-                log('错误：' + e, 'disconnected')
-            }
-        }
-
-        function disconnect() {
-            if (ws) ws.close()
-        }
-
-        function sendMsg() {
-            const input = document.getElementById('msg')
-            const targetID = parseInt(document.getElementById('target-id').value)
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                log('未连接', 'disconnected')
-                return
-            }
-            const msg = {
-                type: "chat",
-                target_id: targetID,
-                target_type: 1,
-                content: input.value
-            }
-            ws.send(JSON.stringify(msg))
-            log('发送：' + JSON.stringify(msg), 'sent')
-            input.value = ''
-        }
-    </script>
+    function sendGroup() {
+        const input = document.getElementById('group-msg')
+        const groupID = parseInt(document.getElementById('group-msg-id').value)
+        if (!ws||ws.readyState!==WebSocket.OPEN) { log('WS未连接','err'); return }
+        const msg = { type:'chat', target_id:groupID, target_type:2, content:input.value }
+        ws.send(JSON.stringify(msg))
+        log(`发送群消息 → ${JSON.stringify(msg)}`,'sent')
+        input.value = ''
+    }
+</script>
 </body>
 </html>

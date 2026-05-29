@@ -3,6 +3,7 @@ package repository
 import (
 	"Project-IM/internal/domain"
 	"context"
+	"time"
 )
 
 type GroupRepository interface {
@@ -11,4 +12,5 @@ type GroupRepository interface {
 	AddMember(ctx context.Context, groupID int64, userID int64) error
 	FindMembers(ctx context.Context, groupID int64) ([]*domain.GroupMember, error)
 	FindGroupsByUserID(ctx context.Context, userID int64) ([]*domain.GroupMember, error)
+	UpdateLastSeen(ctx context.Context, userID, groupID int64, t time.Time) error
 }
