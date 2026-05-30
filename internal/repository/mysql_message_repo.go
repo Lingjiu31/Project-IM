@@ -61,7 +61,9 @@ func (r *MySQLMessageRepo) FindUnread(ctx context.Context, userID int64) (
 }
 
 func (r *MySQLMessageRepo) MarkRead(ctx context.Context, msgIDs []int64) error {
-	if err := r.db.WithContext(ctx).Where("id IN ?", msgIDs).
+	if err := r.db.WithContext(ctx).
+		Model(MessagePO{}).
+		Where("id IN ?", msgIDs).
 		Update("status", domain.MsgStatusRead).Error; err != nil {
 		return err
 	}
