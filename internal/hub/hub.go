@@ -7,8 +7,11 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+const msgChannel = "im:messages"
 
 type Hub struct {
 	clients    map[int64]*Client            // 在线用户表
@@ -19,6 +22,8 @@ type Hub struct {
 	leaveGroup chan *GroupAction            // 离开群
 	broadcast  chan *domain.WSMessage       // 转发消息
 	msgRepo    repository.MessageRepository // 消息存储
+	rdb        *redis.Client                // Redis 客户端
+	localRoute chan *domain.Message         // 来自 Redis 的消息，只做本地路由
 }
 
 type GroupAction struct {
@@ -26,7 +31,7 @@ type GroupAction struct {
 	userID  int64
 }
 
-func NewHub(msgRepo repository.MessageRepository) *Hub {
+func NewHub(msgRepo repository.MessageRepository, rdb *redis.Client) *Hub {
 	return &Hub{
 		clients:    make(map[int64]*Client),
 		groups:     make(map[int64]map[int64]bool),
@@ -36,11 +41,33 @@ func NewHub(msgRepo repository.MessageRepository) *Hub {
 		leaveGroup: make(chan *GroupAction),
 		broadcast:  make(chan *domain.WSMessage),
 		msgRepo:    msgRepo,
+		rdb:        rdb,
+		localRoute: make(chan *domain.Message, 256),
 	}
 }
 
 func (h *Hub) UserJoinGroup(userID, groupID int64) {
 	h.joinGroup <- &GroupAction{groupID, userID}
+}
+
+func (h *Hub) SubscribeRedis(ctx context.Context) {
+	// 先订阅
+	sub := h.rdb.Subscribe(ctx, msgChannel)
+	defer sub.Close()
+	ch := sub.Channel()
+	for {
+		select {
+		case redisMsg := <-ch:
+			var msg domain.Message
+			if err := json.Unmarshal([]byte(redisMsg.Payload), &msg); err != nil {
+				zap.L().Error("Redis消息反序列化失败", zap.Error(err))
+				continue
+			}
+			h.localRoute <- &msg
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // Run 是 Hub 的核心调度循环，所有对 clients/groups 的读写都在这一个 goroutine 里完成
@@ -72,6 +99,13 @@ func (h *Hub) Run() {
 			if err := h.msgRepo.Save(context.Background(), record); err != nil {
 				zap.L().Error("消息存库失败", zap.Error(err))
 			}
+			// 数据库操作后数据就自动回写
+			data, _ := json.Marshal(record)
+			if err := h.rdb.Publish(context.Background(), msgChannel, data).Err(); err != nil {
+				zap.L().Error("Redis发布消息失败", zap.Error(err))
+			}
+		case msg := <-h.localRoute:
+			// 来自 Redis 的消息，只做本地路由，不存库不发 Redis
 			if msg.TargetType == domain.TargetTypeUser {
 				// 单聊：直接找接收方
 				if target, ok := h.clients[msg.TargetID]; ok {
